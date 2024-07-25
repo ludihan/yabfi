@@ -3,7 +3,7 @@
 CC        = gcc
 SRC       = yabfi.c
 CFLAGS    = -std=c17 -Wpedantic -Wall -Werror -Wextra -O3
-SANITIZER = -fsanitize=address -fsanitize=undefined
+#SANITIZER = -fsanitize=address -fsanitize=undefined
 BIN       = yabfi
 
 build:

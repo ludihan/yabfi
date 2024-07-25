@@ -3,83 +3,142 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #define NUM_CELLS 30000
 
-void interpretBF(FILE *fp) {
-    size_t cursor = 0;
-    size_t loopPos = -1;
-    char cells[NUM_CELLS];
-
-    char ch;
-    char *src = malloc(sizeof(char) * 1);
-    size_t srcLen = 0;
-    while ((ch = fgetc(fp)) != EOF) {
-        src = realloc(src, sizeof(char) * (srcLen + 1));
-        src[srcLen] = ch;
-        srcLen++;
-    }
-
-    for (size_t srcPos = 0; srcPos < srcLen; srcPos++) {
-        puts("oi");
-        switch (src[srcPos]) {
+void interpretBF(const char *input, char cells[NUM_CELLS], int cursorPos) {
+    size_t inputLen = strlen(input);
+    for (size_t inputPos = 0; inputPos < inputLen; inputPos++) {
+        switch (input[inputLen]) {
             case '>':
-                if (cursor == NUM_CELLS-1) {
-                    cursor = 0;
+                if (cursorPos == NUM_CELLS-1) {
+                    cursorPos = 0;
                 } else {
-                    cursor++;
+                    cursorPos++;
                 }
                 break;
             case '<':
-                if (cursor == 0) {
-                    cursor = NUM_CELLS-1;
+                if (cursorPos == 0) {
+                    cursorPos = NUM_CELLS-1;
                 } else {
-                    cursor--;
+                    cursorPos--;
                 }
                 break;
             case '+':
-                cells[cursor]++;
+                cells[cursorPos]++;
                 break;
             case '-':
-                cells[cursor]--;
+                cells[cursorPos]--;
                 break;
             case '.':
-                putchar(cells[cursor]);
+                putchar(cells[cursorPos]);
                 break;
             case ',':
-                cells[cursor] = getchar();
+                cells[cursorPos] = getchar();
                 break;
             case '[':
-                cursor = loopPos;
+                interpretBF(input + inputPos, cells, cursorPos);
                 break;
             case ']':
-                if (loopPos != (size_t)-1 || cells[cursor] != 0) {
-                    cursor = srcPos;
-                }
+                return;
                 break;
         }
-        printf("cursor: %ld\n", cursor);
     }
-    free(src);
+}
+
+struct SyntaxError {
+    size_t col;
+    size_t line;
+    long int bracket;
+};
+
+void checkBracketSyntax(const char *input, struct SyntaxError *se) {
+    size_t inputLen = strlen(input);
+    for (size_t inputPos = 0; inputPos < inputLen; inputPos++) {
+        printf("%c", input[inputLen]);
+        switch(input[inputLen]) {
+            case '[':
+                puts("flakdjs");
+                se->bracket++;
+                checkBracketSyntax(input + inputLen, se);
+                break;
+            case ']':
+                return;
+                break;
+            case '\n':
+                se->line++;
+                break;
+            default:
+                se->col++;
+                break;
+        }
+    }
+    return;
+}
+
+
+int readToInterpreter(FILE *fp) {
+    char *input = malloc(sizeof(char) * 1);
+    size_t stringLen = 1;
+    char ch;
+
+    while ((ch = fgetc(fp)) != EOF) {
+        input = realloc(input, sizeof(char) * (stringLen + 1));
+        input[stringLen - 1] = ch;
+        stringLen++;
+    }
+    input[stringLen] = '\0';
+    printf("%s: %ld\n", input, strlen(input));
+
+    struct SyntaxError se = {
+        .col = 0,
+        .line = 0,
+        .bracket = 0,
+    };
+
+    checkBracketSyntax(input, &se);
+    printf("line: %ld, col: %ld, bracket: %ld", se.line, se.col, se.bracket);
+    if (se.bracket > 0) {
+        printf("syntax error: unclosed bracket in line %ld column %ld",
+                se.line,
+                se.col);
+    } else if (se.bracket < 0) {
+        printf("syntax error: unexpected closing bracket in line %ld column %ld",
+                se.line,
+                se.col);
+
+    }
+
+    interpretBF(input, (char[NUM_CELLS]){ 0 }, 0);
+
+    free(input);
+    return 1;
 }
 
 int main(int argc, char *argv[]) {
     if (isatty(STDIN_FILENO)) {
         if (argc < 2) {
-            puts("Missing file argument");
+            puts("missing file argument, aborting...");
             return EXIT_FAILURE;
         } else {
             for (int i = 1; i < argc; i++) {
                 FILE *fp = fopen(argv[i], "r");
                 if (!fp) {
-                    printf("%s: Failed to open file. Aborting...\n", argv[i]);
+                    printf("%s: failed to open file, aborting...\n", argv[i]);
                     return EXIT_FAILURE;
                 }
-                interpretBF(fp);
+                if (!readToInterpreter(fp)) {
+                    fclose(fp);
+                    return EXIT_FAILURE;
+                }
                 fclose(fp);
             }
         }
     } else {
-        interpretBF(stdin);
+        if (!readToInterpreter(stdin)) {
+            return EXIT_FAILURE;
+        }
     }
+    return EXIT_SUCCESS;
 }
