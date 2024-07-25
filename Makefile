@@ -1,13 +1,13 @@
 .PHONY = clean build
 
 CC        = gcc
-SRC       = yabfi.c
+SRC       = yabi.c
 CFLAGS    = -std=c17 -Wpedantic -Wall -Werror -Wextra -O3
 #SANITIZER = -fsanitize=address -fsanitize=undefined
-BIN       = yabfi
+BIN       = yabi
 
 build:
 	$(CC) $(SRC) $(CFLAGS) $(SANITIZER) -o $(BIN)
 
 clean:
-	rm yabfi
+	rm $(BIN)
